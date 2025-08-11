@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    const user = await dbHelpers.getUserByEmail(email) as any
+    let user = await dbHelpers.getUserByEmail(email) as any
 
     if (!user) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
@@ -22,7 +22,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    const token = authHelpers.generateToken(user.id)
+    // Auto-promote configured admin email
+    if (email.toLowerCase() === "admin@gmail.com" && !user.is_admin) {
+      await dbHelpers.setUserAdminByEmail(email, true)
+      user = await dbHelpers.getUserByEmail(email) as any
+    }
+    const token = authHelpers.generateToken(user.id, !!user.is_admin)
 
     return NextResponse.json({
       token,
@@ -32,6 +37,7 @@ export async function POST(request: NextRequest) {
         first_name: user.first_name,
         last_name: user.last_name,
         profile_image: user.profile_image,
+        is_admin: !!user.is_admin,
       },
     })
   } catch (error) {

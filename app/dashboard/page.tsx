@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const [sortBy, setSortBy] = useState<string>("date")
   const [groupBy, setGroupBy] = useState<string>("none")
   const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -204,6 +205,73 @@ export default function DashboardPage() {
     { name: "Oceania", image: "/placeholder.svg?height=120&width=120", destinations: 4 },
   ]
 
+  // Static example data for recommendations and budget highlights per region
+  const regionalDetails: Record<string, {
+    recommendedDestinations: { name: string; country?: string; estBudget: number }[]
+    budgetHighlights: { label: string; amount: number }[]
+  }> = {
+    Europe: {
+      recommendedDestinations: [
+        { name: "Paris", country: "France", estBudget: 1500 },
+        { name: "Rome", country: "Italy", estBudget: 1200 },
+        { name: "Barcelona", country: "Spain", estBudget: 1100 },
+      ],
+      budgetHighlights: [
+        { label: "Avg. Flight", amount: 700 },
+        { label: "Avg. Stay (5d)", amount: 600 },
+        { label: "Food & Local", amount: 300 },
+      ],
+    },
+    Asia: {
+      recommendedDestinations: [
+        { name: "Tokyo", country: "Japan", estBudget: 1400 },
+        { name: "Bali", country: "Indonesia", estBudget: 900 },
+        { name: "Bangkok", country: "Thailand", estBudget: 800 },
+      ],
+      budgetHighlights: [
+        { label: "Avg. Flight", amount: 600 },
+        { label: "Avg. Stay (5d)", amount: 450 },
+        { label: "Food & Local", amount: 250 },
+      ],
+    },
+    Americas: {
+      recommendedDestinations: [
+        { name: "New York", country: "USA", estBudget: 1600 },
+        { name: "Rio de Janeiro", country: "Brazil", estBudget: 1200 },
+        { name: "Cancún", country: "Mexico", estBudget: 1000 },
+      ],
+      budgetHighlights: [
+        { label: "Avg. Flight", amount: 650 },
+        { label: "Avg. Stay (5d)", amount: 700 },
+        { label: "Food & Local", amount: 350 },
+      ],
+    },
+    Africa: {
+      recommendedDestinations: [
+        { name: "Cape Town", country: "South Africa", estBudget: 1100 },
+        { name: "Marrakesh", country: "Morocco", estBudget: 900 },
+        { name: "Zanzibar", country: "Tanzania", estBudget: 1000 },
+      ],
+      budgetHighlights: [
+        { label: "Avg. Flight", amount: 750 },
+        { label: "Avg. Stay (5d)", amount: 450 },
+        { label: "Food & Local", amount: 250 },
+      ],
+    },
+    Oceania: {
+      recommendedDestinations: [
+        { name: "Sydney", country: "Australia", estBudget: 1700 },
+        { name: "Auckland", country: "New Zealand", estBudget: 1600 },
+        { name: "Gold Coast", country: "Australia", estBudget: 1400 },
+      ],
+      budgetHighlights: [
+        { label: "Avg. Flight", amount: 900 },
+        { label: "Avg. Stay (5d)", amount: 550 },
+        { label: "Food & Local", amount: 300 },
+      ],
+    },
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -249,9 +317,9 @@ export default function DashboardPage() {
                     {user?.email}
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="cursor-pointer">
+                  <DropdownMenuItem className="cursor-pointer" onClick={()=> router.push('/profile')}>
                     <Settings className="h-4 w-4 mr-2" />
-                    Settings
+                    Profile
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
@@ -423,7 +491,13 @@ export default function DashboardPage() {
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Top Regional Selections</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {topRegionalSelections.map((region) => (
-              <Card key={region.name} className="hover:shadow-lg transition-shadow cursor-pointer">
+              <Card
+                key={region.name}
+                className={`transition-shadow cursor-pointer hover:shadow-lg ${
+                  selectedRegion === region.name ? "ring-2 ring-blue-500" : ""
+                }`}
+                onClick={() => setSelectedRegion(region.name)}
+              >
                 <CardContent className="p-4 text-center">
                   <div className="w-full h-24 bg-gray-200 rounded-lg mb-3 flex items-center justify-center">
                     <MapPin className="h-8 w-8 text-gray-400" />
@@ -434,6 +508,62 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
+          {selectedRegion && (
+            <Card className="mt-6">
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h4 className="text-lg font-semibold">{selectedRegion} Recommendations</h4>
+                    <p className="text-sm text-gray-600">Handpicked spots and a quick budget snapshot</p>
+                  </div>
+                  <button
+                    className="text-gray-500 hover:text-gray-700 text-sm flex items-center"
+                    onClick={() => setSelectedRegion(null)}
+                    aria-label="Clear selection"
+                  >
+                    <X className="h-4 w-4 mr-1" /> Clear
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <h5 className="font-medium mb-3">Recommended Destinations</h5>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {regionalDetails[selectedRegion]?.recommendedDestinations.map((d) => (
+                        <Card key={d.name} className="border border-gray-200">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <div className="font-semibold">{d.name}</div>
+                                {d.country && (
+                                  <div className="text-xs text-gray-600 mt-0.5">{d.country}</div>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-700 flex items-center">
+                                <DollarSign className="h-4 w-4 mr-1 text-emerald-600" />
+                                {d.estBudget.toLocaleString()}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h5 className="font-medium mb-3">Budget Highlights</h5>
+                    <div className="space-y-3">
+                      {regionalDetails[selectedRegion]?.budgetHighlights.map((b) => (
+                        <div key={b.label} className="flex items-center justify-between rounded-md border p-3">
+                          <span className="text-sm text-gray-700">{b.label}</span>
+                          <span className="text-sm font-semibold">${b.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Previous Trips */}

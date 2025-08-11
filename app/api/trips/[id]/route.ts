@@ -39,6 +39,17 @@ export async function GET(
     const stops = await dbHelpers.getTripStops(tripId)
     const stopCount = stops.length
 
+    // Compute live total budget from activities as a safeguard
+    try {
+      const live = await dbHelpers.recalcTripTotalBudget(tripId)
+      if (live && typeof live.total !== 'undefined') {
+        trip.total_budget = live.total
+      }
+    } catch (e) {
+      // Non-fatal: if computation fails, fall back to stored total_budget
+      console.warn('Live total budget calc failed:', e)
+    }
+
     return NextResponse.json({
       ...trip,
       stop_count: stopCount,

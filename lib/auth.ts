@@ -12,13 +12,13 @@ export const authHelpers = {
     return await bcrypt.compare(password, hash)
   },
 
-  generateToken: (userId: number): string => {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" })
+  generateToken: (userId: number, isAdmin: boolean = false): string => {
+    return jwt.sign({ userId, isAdmin }, JWT_SECRET, { expiresIn: "7d" })
   },
 
-  verifyToken: (token: string): { userId: number } | null => {
+  verifyToken: (token: string): { userId: number; isAdmin?: boolean } | null => {
     try {
-      return jwt.verify(token, JWT_SECRET) as { userId: number }
+      return jwt.verify(token, JWT_SECRET) as { userId: number; isAdmin?: boolean }
     } catch {
       return null
     }

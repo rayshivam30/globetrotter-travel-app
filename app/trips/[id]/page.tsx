@@ -17,11 +17,15 @@ interface Trip {
   stop_count: number
   total_budget: number
   cover_image?: string
+  is_public?: boolean
 }
 
 export default function TripDetailPage() {
   const [trip, setTrip] = useState<Trip | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [stops, setStops] = useState<any[]>([])
+  const [shareSaving, setShareSaving] = useState(false)
+  const [stopsLoading, setStopsLoading] = useState(true)
   const router = useRouter()
   const params = useParams()
   const tripId = params.id
@@ -34,6 +38,7 @@ export default function TripDetailPage() {
     }
 
     fetchTrip()
+    fetchStops()
   }, [tripId])
 
   const fetchTrip = async () => {
@@ -54,6 +59,23 @@ export default function TripDetailPage() {
       router.push("/trips")
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchStops = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      const response = await fetch(`/api/trips/${tripId}/stops`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setStops(data.stops || [])
+      }
+    } catch (e) {
+      console.error("Error fetching stops", e)
+    } finally {
+      setStopsLoading(false)
     }
   }
 
@@ -112,9 +134,23 @@ export default function TripDetailPage() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">{trip.name}</h1>
-            <Badge variant="secondary">
-              {trip.stop_count} {trip.stop_count === 1 ? "stop" : "stops"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">
+                {trip.stop_count} {trip.stop_count === 1 ? "stop" : "stops"}
+              </Badge>
+              <Button size="sm" variant={trip.is_public?"secondary":"outline"} disabled={shareSaving} onClick={async()=>{
+                try {
+                  setShareSaving(true)
+                  const token = localStorage.getItem("token")
+                  await fetch(`/api/trips/${tripId}/share`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ is_public: !trip.is_public }) })
+                  setTrip((t)=> t? { ...t, is_public: !t.is_public }: t)
+                } finally { setShareSaving(false) }
+              }}>{trip.is_public? 'Unshare' : 'Share'}</Button>
+              <Button size="sm" variant="ghost" onClick={async()=>{
+                const url = `${window.location.origin}/p/${tripId}`
+                await navigator.clipboard.writeText(url)
+              }}>Copy Link</Button>
+            </div>
           </div>
           <p className="text-gray-600 text-lg">{trip.description}</p>
         </div>
@@ -152,16 +188,47 @@ export default function TripDetailPage() {
 
         {/* Trip Stops */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Itinerary</CardTitle>
+            <div className="flex gap-2">
+              <Link href={`/trips/${tripId}/budget`}>
+                <Button size="sm" variant="secondary">Budget</Button>
+              </Link>
+              <Link href={`/trips/${tripId}/itinerary/view`}>
+                <Button size="sm" variant="ghost">View</Button>
+              </Link>
+              <Link href={`/trips/${tripId}/builder`}>
+                <Button size="sm" variant="outline">Build</Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h4 className="text-lg font-semibold mb-2">No stops planned yet</h4>
-              <p className="text-gray-600 mb-4">Add destinations to your trip to see your itinerary</p>
-              <Button>Add Destination</Button>
-            </div>
+            {stopsLoading ? (
+              <div className="text-sm text-gray-500">Loading itinerary...</div>
+            ) : stops.length === 0 ? (
+              <div className="text-center py-8">
+                <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h4 className="text-lg font-semibold mb-2">No stops planned yet</h4>
+                <p className="text-gray-600 mb-4">Add destinations to your trip to see your itinerary</p>
+                <Link href={`/trips/${tripId}/builder`}>
+                  <Button>Add Destination</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {stops.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded border p-3">
+                    <div>
+                      <div className="font-medium">{s.city_name}, {s.country}</div>
+                      <div className="text-sm text-gray-600">{new Date(s.arrival_date).toLocaleDateString()} - {new Date(s.departure_date).toLocaleDateString()}</div>
+                    </div>
+                    <Link href={`/trips/${tripId}/itinerary/view`}>
+                      <Button size="sm" variant="outline">Details</Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
