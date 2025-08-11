@@ -45,7 +45,11 @@ export default function ItineraryViewPage() {
           const ar = await fetch(`/api/trips/stops/${st.id}/activities`, { headers: { Authorization: `Bearer ${token}` } })
           if (ar.ok) {
             const d = await ar.json()
-            entries[st.id] = (d.activities || [])
+            entries[st.id] = (d.activities || []).map((a: any) => ({
+              ...a,
+              scheduled_date: a.scheduled_date ? String(a.scheduled_date).slice(0, 10) : "",
+              scheduled_time: a.scheduled_time ? String(a.scheduled_time).slice(0, 5) : "",
+            }))
           } else {
             entries[st.id] = []
           }
@@ -119,7 +123,7 @@ export default function ItineraryViewPage() {
                               <span className="text-gray-500">Date</span>
                               <input
                                 type="date"
-                                className="border rounded px-2 py-1 text-xs"
+                                className="border rounded px-2 py-1 text-xs cursor-pointer"
                                 value={a.scheduled_date || ""}
                                 onChange={async (e)=>{
                                   const token = localStorage.getItem("token")
@@ -140,7 +144,7 @@ export default function ItineraryViewPage() {
                               <span className="text-gray-500">Time</span>
                               <input
                                 type="time"
-                                className="border rounded px-2 py-1 text-xs"
+                                className="border rounded px-2 py-1 text-xs cursor-pointer"
                                 value={a.scheduled_time || ""}
                                 onChange={async (e)=>{
                                   const token = localStorage.getItem("token")

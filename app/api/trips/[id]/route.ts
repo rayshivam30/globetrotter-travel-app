@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { dbHelpers } from "@/lib/database"
 import { authHelpers } from "@/lib/auth"
+import pool from "@/lib/database"
 
 export async function GET(
   request: NextRequest,
@@ -56,6 +57,39 @@ export async function GET(
     })
   } catch (error) {
     console.error("Trip fetch error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const decoded = authHelpers.verifyToken(authHeader.substring(7))
+    if (!decoded) return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+
+    const tripId = Number(params.id)
+    const body = await request.json().catch(()=>({}))
+    const fields: any = {}
+    if (body.origin_city_id !== undefined) fields.origin_city_id = body.origin_city_id === null ? null : Number(body.origin_city_id)
+    if (body.origin_address !== undefined) fields.origin_address = body.origin_address === null ? null : String(body.origin_address)
+
+    if (!Object.keys(fields).length) return NextResponse.json({ error: "No changes" }, { status: 400 })
+
+    const sets: string[] = []
+    const paramsArr: any[] = []
+    let idx = 1
+    for (const [k, v] of Object.entries(fields)) {
+      sets.push(`${k} = $${idx++}`)
+      paramsArr.push(v)
+    }
+    paramsArr.push(tripId)
+
+    const sql = `UPDATE trips SET ${sets.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING id`
+    await pool.query(sql, paramsArr)
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error("Trip origin PATCH error", e)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

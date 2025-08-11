@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS trips (
   cover_image VARCHAR(500),
   is_public BOOLEAN DEFAULT FALSE,
   total_budget DECIMAL(10,2) DEFAULT 0,
+  base_currency VARCHAR(3) DEFAULT 'USD',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -58,6 +59,10 @@ ALTER TABLE trips ADD COLUMN IF NOT EXISTS transport_budget_total DECIMAL(12,2) 
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS hotel_budget_total DECIMAL(12,2) DEFAULT 0;
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS meals_budget_total DECIMAL(12,2) DEFAULT 0;
 ALTER TABLE trips ADD COLUMN IF NOT EXISTS activities_budget_total DECIMAL(12,2) DEFAULT 0;
+
+-- Trip origin fields
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS origin_city_id INTEGER REFERENCES cities(id);
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS origin_address TEXT;
 
 -- Cities table
 CREATE TABLE IF NOT EXISTS cities (
@@ -72,6 +77,27 @@ CREATE TABLE IF NOT EXISTS cities (
   image_url VARCHAR(500),
   UNIQUE(name, country)
 );
+
+-- City cost index table for budget calculations
+CREATE TABLE IF NOT EXISTS city_cost_index (
+  city_id INTEGER PRIMARY KEY REFERENCES cities(id) ON DELETE CASCADE,
+  avg_transport_cost DECIMAL(10,2) DEFAULT 0,
+  avg_accommodation_per_night DECIMAL(10,2) DEFAULT 0,
+  avg_meal_cost_budget DECIMAL(10,2) DEFAULT 0,
+  avg_meal_cost_midrange DECIMAL(10,2) DEFAULT 0,
+  avg_meal_cost_luxury DECIMAL(10,2) DEFAULT 0,
+  currency VARCHAR(3) DEFAULT 'USD'
+);
+
+-- Exchange rates cache
+CREATE TABLE IF NOT EXISTS exchange_rates (
+  base_currency VARCHAR(3) NOT NULL,
+  target_currency VARCHAR(3) NOT NULL,
+  rate NUMERIC(18,8) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (base_currency, target_currency)
+);
+
 
 -- Trip stops table
 CREATE TABLE IF NOT EXISTS trip_stops (
@@ -99,10 +125,23 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT,
   category VARCHAR(100),
   estimated_cost DECIMAL(10,2) DEFAULT 0,
+  currency VARCHAR(3) DEFAULT 'USD',
   duration_hours INTEGER DEFAULT 2,
+  tags TEXT,
   image_url VARCHAR(500),
   FOREIGN KEY (city_id) REFERENCES cities(id)
 );
+
+-- Activity instances (custom per user)
+CREATE TABLE IF NOT EXISTS activity_instances (
+  id SERIAL PRIMARY KEY,
+  trip_stop_id INTEGER NOT NULL REFERENCES trip_stops(id) ON DELETE CASCADE,
+  activity_id INTEGER REFERENCES activities(id),
+  custom_cost DECIMAL(10,2),
+  name VARCHAR(255),
+  notes TEXT
+);
+
 
 -- Cleanup duplicates in activities by (city_id, name), keeping lowest id
 DELETE FROM activities a

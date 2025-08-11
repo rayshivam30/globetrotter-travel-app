@@ -295,7 +295,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome back, {user?.first_name || "Traveler"}!</span>
-              
+              <Link href="/trips"><Button variant="outline" size="sm">View My Trips</Button></Link>
               <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <button className="focus:outline-none">
@@ -572,18 +572,21 @@ export default function DashboardPage() {
             <h3 className="text-xl font-semibold text-gray-900">
               Previous Trips {filteredTrips.length !== trips.length && `(${filteredTrips.length} of ${trips.length})`}
             </h3>
-            {searchQuery && (
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <Search className="h-4 w-4" />
-                <span>Searching for: "{searchQuery}"</span>
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="text-blue-600 hover:text-blue-800"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <Link href="/trips"><Button variant="outline" size="sm">View My Trips</Button></Link>
+              {searchQuery && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <Search className="h-4 w-4" />
+                  <span>Searching for: "{searchQuery}"</span>
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           {filteredTrips.length === 0 ? (
             <Card>

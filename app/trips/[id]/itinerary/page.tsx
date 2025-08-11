@@ -187,7 +187,7 @@ export default function BuildItineraryPage() {
                         <Input
                           id={`start-${idx}`}
                           type="date"
-                          className="pl-9"
+                          className="pl-9 cursor-pointer"
                           value={s.startDate}
                           onChange={(e) => updateSection(idx, { startDate: e.target.value })}
                         />
@@ -200,7 +200,7 @@ export default function BuildItineraryPage() {
                         <Input
                           id={`end-${idx}`}
                           type="date"
-                          className="pl-9"
+                          className="pl-9 cursor-pointer"
                           value={s.endDate}
                           onChange={(e) => updateSection(idx, { endDate: e.target.value })}
                         />

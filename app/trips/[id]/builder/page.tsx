@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { Plane, ArrowLeft, Plus, ChevronUp, ChevronDown, Search, Calendar, MapPin, X, Save } from "lucide-react"
+import { Plane, ArrowLeft, Plus, ChevronUp, ChevronDown, Search, Calendar, MapPin, X, Save, Route } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,6 +37,10 @@ export default function BuilderPage() {
   const [activityCategoryFilters, setActivityCategoryFilters] = useState<string[]>([])
   const [activityMaxCostFilters, setActivityMaxCostFilters] = useState<number[]>([])
 
+  const [originCityInput, setOriginCityInput] = useState("")
+  const [originSuggestions, setOriginSuggestions] = useState<City[]>([])
+  const [originCity, setOriginCity] = useState<City | null>(null)
+
   // Load existing stops and their activities
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -55,6 +59,13 @@ export default function BuilderPage() {
           }))
           setStops(baseStops)
         }
+        // load origin fields
+        const t = await fetch(`/api/trips/${tripId}`, { headers: { Authorization: `Bearer ${token}` } })
+        const td = await t.json().catch(()=> ({}))
+        if (td?.origin_city_id && td?.stop_count !== undefined) {
+          setOriginCity({ id: td.origin_city_id, name: td.origin_city_name || "", country: td.origin_country || "" })
+          setOriginCityInput(td.origin_city_name || "")
+        }
       } catch (e) { console.error(e) }
     })()
   }, [tripId])
@@ -63,6 +74,13 @@ export default function BuilderPage() {
   const removeStop = (i: number) => { setStops((p) => p.filter((_, idx) => idx !== i)); setActivityInputs((ai)=>ai.filter((_,idx)=>idx!==i)); setCityInputs((ci)=>ci.filter((_,idx)=>idx!==i)); setCitySuggestions((cs)=>cs.filter((_,idx)=>idx!==i)); setActivitySuggestions((as)=>as.filter((_,idx)=>idx!==i)); setActivityCategoryFilters((af)=>af.filter((_,idx)=>idx!==i)); setActivityMaxCostFilters((mf)=>mf.filter((_,idx)=>idx!==i)) }
   const moveUp = (i: number) => i>0 && (setStops((p)=>{ const a=[...p]; [a[i-1],a[i]]=[a[i],a[i-1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivityCategoryFilters((af)=>{ const b=[...af]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivityMaxCostFilters((mf)=>{ const b=[...mf]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }))
   const moveDown = (i: number) => i<stops.length-1 && (setStops((p)=>{ const a=[...p]; [a[i+1],a[i]]=[a[i],a[i+1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivityCategoryFilters((af)=>{ const b=[...af]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivityMaxCostFilters((mf)=>{ const b=[...mf]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }))
+
+  const saveOrigin = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    await fetch(`/api/trips/${tripId}`, { method:'PATCH', headers:{ 'Content-Type':'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ origin_city_id: originCity?.id ?? null, origin_address: originCityInput || null }) })
+    setMsg("Saved starting city")
+  }
 
   const saveAll = async () => {
     try {
@@ -155,6 +173,32 @@ export default function BuilderPage() {
         </div>
         {msg && <div className="mb-4 text-sm text-green-600">{msg}</div>}
         {err && <div className="mb-4 text-sm text-red-600">{err}</div>}
+
+        <Card className="mb-5">
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Route className="h-4 w-4"/> Starting City</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <Label>Search</Label>
+            <div className="relative">
+              <Input placeholder="Enter starting city..." value={originCityInput} onChange={async (e)=>{
+                const q = e.target.value
+                setOriginCityInput(q)
+                if (q.length<2) { setOriginSuggestions([]); return }
+                const results = await searchCities(q)
+                setOriginSuggestions(results.slice(0,6))
+              }}/>
+              {!!originSuggestions.length && (
+                <div className="absolute z-10 mt-1 w-full bg-white border rounded shadow">
+                  {originSuggestions.map(c => (
+                    <button key={c.id} className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm" onClick={()=>{ setOriginCity(c); setOriginCityInput(`${c.name}, ${c.country}`); setOriginSuggestions([]) }}>{c.name}, {c.country}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <Button size="sm" onClick={saveOrigin}>Save Starting City</Button>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="space-y-5">
           {stops.map((s, idx) => (
@@ -268,7 +312,6 @@ export default function BuilderPage() {
                         const v=e.target.value
                         setActivityCategoryFilters((af)=>{ const b=[...af]; b[idx]=v; return b })
                         // re-filter current suggestions
-                        const current = activitySuggestions[idx] || []
                         if (activityInputs[idx] && activityInputs[idx].length>=2) {
                           const list = await searchActivities(activityInputs[idx], s.city?.id)
                           const max = activityMaxCostFilters[idx]
