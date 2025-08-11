@@ -38,6 +38,7 @@ interface Trip {
   stop_count: number
   total_budget: number
   cover_image?: string
+  destinations?: string[]
 }
 
 export default function DashboardPage() {
@@ -666,10 +667,14 @@ export default function DashboardPage() {
                         <Calendar className="h-4 w-4 mr-2" />
                         {formatDate(trip.start_date)} - {formatDate(trip.end_date)}
                       </div>
-                      <div className="flex items-center text-sm text-gray-600">
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        ${(trip.total_budget || 0).toLocaleString()}
-                      </div>
+                      {trip.destinations?.length > 0 && (
+                        <div className="flex items-start text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-2">
+                            {trip.destinations.join(', ')}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <Link href={`/trips/${trip.id}`} className="block">

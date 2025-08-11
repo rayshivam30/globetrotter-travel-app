@@ -189,14 +189,85 @@ export const dbHelpers = {
 
   // City operations
   searchCities: async (query: string) => {
-    const sql = `
-      SELECT * FROM cities 
-      WHERE name ILIKE $1 OR country ILIKE $1
-      ORDER BY popularity_score DESC
-      LIMIT 20
-    `
-    const result = await pool.query(sql, [`%${query}%`])
-    return result.rows
+    try {
+      // First, get all available columns from the cities table
+      const columnsResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'cities'
+      `);
+      
+      // Build a safe select statement with only existing columns
+      const availableColumns = columnsResult.rows.map(col => col.column_name);
+      const selectedColumns = ['id', 'name', 'country', 'lat', 'lng', 'latitude', 'longitude']
+        .filter(col => availableColumns.includes(col))
+        .join(', ');
+      
+      if (!selectedColumns) {
+        throw new Error('No valid columns found in cities table');
+      }
+      
+      const result = await pool.query(
+        `SELECT ${selectedColumns} FROM cities 
+         WHERE name ILIKE $1 OR country ILIKE $1 
+         ORDER BY name LIMIT 10`,
+        [`%${query}%`]
+      );
+      
+      // Map the results to ensure consistent field names
+      return result.rows.map(city => ({
+        id: city.id,
+        name: city.name,
+        country: city.country,
+        lat: city.lat || city.latitude,
+        lng: city.lng || city.longitude
+      }));
+    } catch (error) {
+      console.error('Error in searchCities:', error);
+      throw error;
+    }
+  },
+
+  getCityById: async (id: number) => {
+    try {
+      // First, get all available columns from the cities table
+      const columnsResult = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = 'cities'
+      `);
+      
+      // Build a safe select statement with only existing columns
+      const availableColumns = columnsResult.rows.map(col => col.column_name);
+      const selectedColumns = ['id', 'name', 'country', 'lat', 'lng', 'latitude', 'longitude']
+        .filter(col => availableColumns.includes(col))
+        .join(', ');
+      
+      if (!selectedColumns) {
+        throw new Error('No valid columns found in cities table');
+      }
+      
+      const result = await pool.query(
+        `SELECT ${selectedColumns} FROM cities WHERE id = $1`,
+        [id]
+      );
+      
+      // Map the result to ensure consistent field names
+      const city = result.rows[0];
+      if (!city) return null;
+      
+      // Handle different possible column names for lat/lng
+      return {
+        id: city.id,
+        name: city.name,
+        country: city.country,
+        lat: city.lat || city.latitude,
+        lng: city.lng || city.longitude
+      };
+    } catch (error) {
+      console.error('Error in getCityById:', error);
+      throw error;
+    }
   },
 
   getAllCities: async () => {

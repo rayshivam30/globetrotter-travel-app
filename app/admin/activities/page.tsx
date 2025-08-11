@@ -17,7 +17,7 @@ export default function AdminActivitiesPage() {
   const [cityId, setCityId] = useState<number | undefined>()
   const [citySearch, setCitySearch] = useState("")
   const [citySuggestions, setCitySuggestions] = useState<City[]>([])
-  const [form, setForm] = useState({ name: "", category: "Sightseeing", price: "", currency: "USD", duration_hours: "", description: "", tags: "", image_url: "" })
+  const [form, setForm] = useState({ name: "", category: "Sightseeing", price: "", currency: "INR", duration_hours: "", description: "", tags: "", image_url: "" })
   const [csv, setCsv] = useState("")
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -194,8 +194,8 @@ export default function AdminActivitiesPage() {
                       <tr key={a.id} className="border-b last:border-0">
                         <td className="py-2 pr-2">{a.name}</td>
                         <td className="py-2 pr-2">{a.category || '-'}</td>
-                        <td className="py-2 pr-2">{a.estimated_cost ?? '-'}</td>
-                        <td className="py-2 pr-2">{a.currency || '-'}</td>
+                        <td className="py-2 pr-2">{a.estimated_cost ? `₹${a.estimated_cost.toLocaleString('en-IN')}` : '-'}</td>
+                        <td className="py-2 pr-2">{a.currency === 'INR' ? '₹' : a.currency || '-'}</td>
                         <td className="py-2 pr-2">{a.duration_hours ?? '-'}</td>
                         <td className="py-2 pr-2">{a.tags || '-'}</td>
                       </tr>

@@ -140,27 +140,6 @@ export default function ItineraryViewPage() {
                                 }}
                               />
                             </label>
-                            <label className="flex items-center gap-1">
-                              <span className="text-gray-500">Time</span>
-                              <input
-                                type="time"
-                                className="border rounded px-2 py-1 text-xs cursor-pointer"
-                                value={a.scheduled_time || ""}
-                                onChange={async (e)=>{
-                                  const token = localStorage.getItem("token")
-                                  if (!token) { router.push("/auth/login"); return }
-                                  setSavingId(a.id)
-                                  try {
-                                    const body = { id: a.id, scheduled_time: e.target.value || null }
-                                    await fetch(`/api/trips/stops/${s.id}/activities`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) })
-                                    setByStopActivities((prev)=>({
-                                      ...prev,
-                                      [s.id]: (prev[s.id]||[]).map(x=> x.id===a.id?{...x, scheduled_time: e.target.value || null}:x)
-                                    }))
-                                  } finally { setSavingId(null) }
-                                }}
-                              />
-                            </label>
                             {savingId===a.id && <span className="text-xs text-gray-400">Saving…</span>}
                           </div>
                         </div>

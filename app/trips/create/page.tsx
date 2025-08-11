@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useToast } from "@/hooks/use-toast"
-import { Plane, ArrowLeft } from "lucide-react"
+import { Plane, ArrowLeft, Search, MapPin } from "lucide-react"
 import Link from "next/link"
+import { useDebounce } from "@/hooks/use-debounce"
 
 export default function CreateTripPage() {
   const [formData, setFormData] = useState({
@@ -19,6 +20,7 @@ export default function CreateTripPage() {
     place: "",
     endDate: "",
   })
+  const [selectedPlaces, setSelectedPlaces] = useState<string[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -28,6 +30,13 @@ export default function CreateTripPage() {
       ...prev,
       [e.target.name]: e.target.value,
     }))
+  }
+
+  const handleSelectPlace = (place: string) => {
+    setFormData(prev => ({ ...prev, place }))
+    if (place && !selectedPlaces.includes(place)) {
+      setSelectedPlaces(prev => [...prev, place])
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -140,13 +149,17 @@ export default function CreateTripPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="place">Select a Place</Label>
-                  <Input
-                    id="place"
-                    name="place"
-                    placeholder="e.g., Paris, Bali, Tokyo"
-                    value={formData.place}
-                    onChange={handleChange}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="place"
+                      name="place"
+                      placeholder="e.g., Paris, Bali, Tokyo"
+                      value={formData.place}
+                      onChange={handleChange}
+                      className="pr-10"
+                    />
+                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate">End Date</Label>
@@ -163,7 +176,32 @@ export default function CreateTripPage() {
 
               <div>
                 <div className="border-b text-sm font-medium text-gray-700 pb-2">Suggestion for Places to Visit/Activities to perform</div>
-                <SuggestionsGrid query={formData.place} onSelect={(v) => setFormData((p) => ({ ...p, place: v }))} />
+                {selectedPlaces.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedPlaces.map((place, index) => (
+                        <div key={index} className="flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
+                          <MapPin className="h-3.5 w-3.5" />
+                          <span>{place}</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setSelectedPlaces(prev => prev.filter((_, i) => i !== index))}
+                            className="ml-1 text-blue-500 hover:text-blue-700"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="mt-2">
+                  <SuggestionsGrid 
+                    query={formData.place} 
+                    onSelect={handleSelectPlace} 
+                    selectedPlaces={selectedPlaces}
+                  />
+                </div>
               </div>
 
               <div className="flex gap-4">
@@ -184,48 +222,98 @@ export default function CreateTripPage() {
   )
 }
 
+interface LocationSuggestion {
+  id: number
+  name: string
+  country: string
+  lat: number
+  lng: number
+}
+
 function SuggestionsGrid({
   query,
   onSelect,
+  selectedPlaces = []
 }: {
   query: string
   onSelect: (value: string) => void
+  selectedPlaces?: string[]
 }) {
-  const items = allSuggestions
-    .filter((s) =>
-      query ? (s.keywords.join(" ") + " " + s.title + " " + (s.location || "")).toLowerCase().includes(query.toLowerCase()) : true
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const debouncedQuery = useDebounce(query, 300)
+
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (!debouncedQuery.trim()) {
+        setSuggestions([])
+        return
+      }
+      
+      setIsLoading(true)
+      try {
+        const token = localStorage.getItem("token")
+        const response = await fetch(`/api/cities/search?q=${encodeURIComponent(debouncedQuery)}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        
+        if (!response.ok) throw new Error('Failed to fetch suggestions')
+        
+        const data = await response.json()
+        setSuggestions(data.results || [])
+      } catch (error) {
+        console.error('Error fetching location suggestions:', error)
+        setSuggestions([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchSuggestions()
+  }, [debouncedQuery])
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="animate-pulse bg-gray-100 rounded-lg p-3 h-16"></div>
+        ))}
+      </div>
     )
-    .slice(0, 6)
+  }
+
+  if (!query) {
+    return null
+  }
+
+  if (suggestions.length === 0 && query) {
+    return (
+      <div className="text-sm text-gray-500 p-2">
+        No locations found. Try a different search term.
+      </div>
+    )
+  }
 
   return (
-    <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
-      {items.map((s) => (
-        <Card key={s.title} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => onSelect(s.title)}>
-          <CardContent className="p-4">
-            <div className="h-24 rounded-md bg-gray-200 mb-3" />
-            <div className="font-medium text-sm">{s.title}</div>
-            {s.location && <div className="text-xs text-gray-600">{s.location}</div>}
-          </CardContent>
-        </Card>
+    <div className="grid grid-cols-1 gap-2 mt-2">
+      {suggestions.map((location) => (
+        <button
+          key={location.id}
+          type="button"
+          onClick={() => onSelect(`${location.name}, ${location.country}`)}
+          className="text-left p-3 rounded-lg border hover:bg-gray-50 transition-colors flex items-start gap-2"
+        >
+          <MapPin className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+          <div>
+            <div className="font-medium">{location.name}</div>
+            <div className="text-sm text-gray-500">{location.country}</div>
+          </div>
+        </button>
       ))}
-      {items.length === 0 && (
-        <div className="col-span-2 md:col-span-3 text-sm text-gray-500">No suggestions. Try another place.</div>
-      )}
     </div>
   )
 }
 
-const allSuggestions: { title: string; location?: string; keywords: string[] }[] = [
-  { title: "Eiffel Tower", location: "Paris, France", keywords: ["paris", "europe", "france", "tower", "landmark"] },
-  { title: "Colosseum", location: "Rome, Italy", keywords: ["rome", "italy", "europe", "history"] },
-  { title: "Sagrada Família", location: "Barcelona, Spain", keywords: ["barcelona", "spain", "gaudi", "europe"] },
-  { title: "Mount Fuji", location: "Japan", keywords: ["tokyo", "japan", "asia", "fuji", "mountain"] },
-  { title: "Ubud Rice Terraces", location: "Bali, Indonesia", keywords: ["bali", "indonesia", "asia", "rice", "ubud"] },
-  { title: "Grand Canyon", location: "Arizona, USA", keywords: ["usa", "america", "canyon", "hike"] },
-  { title: "Christ the Redeemer", location: "Rio de Janeiro, Brazil", keywords: ["rio", "brazil", "christ", "redeemer"] },
-  { title: "Machu Picchu", location: "Peru", keywords: ["peru", "inca", "trek", "south america"] },
-  { title: "Table Mountain", location: "Cape Town, South Africa", keywords: ["africa", "cape town", "hike", "views"] },
-  { title: "Marrakesh Souks", location: "Morocco", keywords: ["africa", "morocco", "markets", "marrakesh"] },
-  { title: "Sydney Opera House", location: "Sydney, Australia", keywords: ["oceania", "australia", "sydney", "opera"] },
-  { title: "Waitomo Glowworm Caves", location: "New Zealand", keywords: ["oceania", "new zealand", "caves", "glowworm"] },
-]
+// useDebounce is imported from @/hooks/use-debounce

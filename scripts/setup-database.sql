@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS users (
   country VARCHAR(100),
   profile_image VARCHAR(500),
   is_admin BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at DATE DEFAULT CURRENT_DATE,
+  updated_at DATE DEFAULT CURRENT_DATE
 );
 
 -- Ensure is_admin column exists for existing databases
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS trips (
   cover_image VARCHAR(500),
   is_public BOOLEAN DEFAULT FALSE,
   total_budget DECIMAL(10,2) DEFAULT 0,
-  base_currency VARCHAR(3) DEFAULT 'USD',
+  base_currency VARCHAR(3) DEFAULT 'INR',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS activities (
   description TEXT,
   category VARCHAR(100),
   estimated_cost DECIMAL(10,2) DEFAULT 0,
-  currency VARCHAR(3) DEFAULT 'USD',
+  currency VARCHAR(3) DEFAULT 'INR',
   duration_hours INTEGER DEFAULT 2,
   tags TEXT,
   image_url VARCHAR(500),

@@ -111,18 +111,31 @@ export async function estimateBudget(
     const cc = await getCityCost(stop.city_id)
     const ci = Number(cc?.city_ci || 100) // generic city cost index baseline
 
-    // Transport fallback: proportional to city index
+    // Transport: ₹10 per km (converted from INR to target currency)
+    const transportRate = 10 // ₹10 per km
     const transportAvg = Number(cc?.avg_transport_cost)
-    const transportFallback = Math.max(20, ci * 0.2)
-    transport += isFinite(transportAvg) && transportAvg > 0 ? transportAvg : transportFallback
+    const transportFallback = Math.max(10, ci * 0.1) // Reduced fallback rate
+    const transportCost = isFinite(transportAvg) && transportAvg > 0 ? transportAvg : transportFallback
+    // Convert from INR to target currency if needed
+    transport += targetCurrency === 'INR' 
+      ? transportCost 
+      : await convertAmount(transportCost, 'INR', targetCurrency)
 
     // Accommodation and meals by nights
     const nights = nightsBetween(stop.arrival_date, stop.departure_date)
 
+    // Accommodation: ₹1,000 per night (converted from INR to target currency)
+    const baseRate = 1000 // ₹1,000 per night
     const hotelNightAvg = Number(cc?.avg_accommodation_per_night)
-    const hotelNightFallback = Math.max(25, ci * 0.5)
-    const hotelNight = isFinite(hotelNightAvg) && hotelNightAvg > 0 ? hotelNightAvg : hotelNightFallback
-    accommodation += hotelNight * nights
+    const hotelNightFallback = baseRate // Use flat rate as fallback
+    const hotelNight = isFinite(hotelNightAvg) && hotelNightAvg > 0 
+      ? hotelNightAvg 
+      : hotelNightFallback
+    // Convert from INR to target currency if needed
+    const nightlyRate = targetCurrency === 'INR' 
+      ? hotelNight 
+      : await convertAmount(hotelNight, 'INR', targetCurrency)
+    accommodation += nightlyRate * nights
 
     const mealBudgetAvg = Number(cc?.avg_meal_cost_budget)
     const mealMidAvg = Number(cc?.avg_meal_cost_midrange)

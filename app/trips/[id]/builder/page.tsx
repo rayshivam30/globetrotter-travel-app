@@ -34,8 +34,6 @@ export default function BuilderPage() {
   const [cityInputs, setCityInputs] = useState<string[]>([])
   const [citySuggestions, setCitySuggestions] = useState<City[][]>([])
   const [activitySuggestions, setActivitySuggestions] = useState<Activity[][]>([])
-  const [activityCategoryFilters, setActivityCategoryFilters] = useState<string[]>([])
-  const [activityMaxCostFilters, setActivityMaxCostFilters] = useState<number[]>([])
 
   const [originCityInput, setOriginCityInput] = useState("")
   const [originSuggestions, setOriginSuggestions] = useState<City[]>([])
@@ -71,9 +69,9 @@ export default function BuilderPage() {
   }, [tripId])
 
   const addStop = () => { setStops((p) => [...p, { city: null, arrivalDate: "", departureDate: "", notes: "", activities: [] }]); setActivityInputs((ai)=>[...ai, ""]) }
-  const removeStop = (i: number) => { setStops((p) => p.filter((_, idx) => idx !== i)); setActivityInputs((ai)=>ai.filter((_,idx)=>idx!==i)); setCityInputs((ci)=>ci.filter((_,idx)=>idx!==i)); setCitySuggestions((cs)=>cs.filter((_,idx)=>idx!==i)); setActivitySuggestions((as)=>as.filter((_,idx)=>idx!==i)); setActivityCategoryFilters((af)=>af.filter((_,idx)=>idx!==i)); setActivityMaxCostFilters((mf)=>mf.filter((_,idx)=>idx!==i)) }
-  const moveUp = (i: number) => i>0 && (setStops((p)=>{ const a=[...p]; [a[i-1],a[i]]=[a[i],a[i-1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivityCategoryFilters((af)=>{ const b=[...af]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivityMaxCostFilters((mf)=>{ const b=[...mf]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }))
-  const moveDown = (i: number) => i<stops.length-1 && (setStops((p)=>{ const a=[...p]; [a[i+1],a[i]]=[a[i],a[i+1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivityCategoryFilters((af)=>{ const b=[...af]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivityMaxCostFilters((mf)=>{ const b=[...mf]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }))
+  const removeStop = (i: number) => { setStops((p) => p.filter((_, idx) => idx !== i)); setActivityInputs((ai)=>ai.filter((_,idx)=>idx!==i)); setCityInputs((ci)=>ci.filter((_,idx)=>idx!==i)); setCitySuggestions((cs)=>cs.filter((_,idx)=>idx!==i)); setActivitySuggestions((as)=>as.filter((_,idx)=>idx!==i)) }
+  const moveUp = (i: number) => i>0 && (setStops((p)=>{ const a=[...p]; [a[i-1],a[i]]=[a[i],a[i-1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i-1],b[i]]=[b[i],b[i-1]]; return b }))
+  const moveDown = (i: number) => i<stops.length-1 && (setStops((p)=>{ const a=[...p]; [a[i+1],a[i]]=[a[i],a[i+1]]; return a }), setActivityInputs((ai)=>{ const b=[...ai]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCityInputs((ci)=>{ const b=[...ci]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setCitySuggestions((cs)=>{ const b=[...cs]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }), setActivitySuggestions((as)=>{ const b=[...as]; [b[i+1],b[i]]=[b[i],b[i+1]]; return b }))
 
   const saveOrigin = async () => {
     const token = localStorage.getItem("token")
@@ -271,18 +269,12 @@ export default function BuilderPage() {
                         if (q.length<2) { setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=[]; return b }); return }
                         const list = await searchActivities(q, s.city?.id)
                         // apply client-side filters
-                        const cat = activityCategoryFilters[idx]
-                        const max = activityMaxCostFilters[idx]
-                        const filtered = list.filter(a => (!cat || a.category===cat) && (!max || (a.estimated_cost ?? 0) <= max))
-                        setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=filtered.slice(0,8); return b })
+                        setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=list.slice(0,8); return b })
                       }} onKeyDown={async (e:any)=>{
                         if (e.key==='Enter') {
                           const q=activityInputs[idx] || ""
                           const list = await searchActivities(q, s.city?.id)
-                          const cat = activityCategoryFilters[idx]
-                          const max = activityMaxCostFilters[idx]
-                          const filtered = list.filter(a => (!cat || a.category===cat) && (!max || (a.estimated_cost ?? 0) <= max))
-                          if (filtered[0]) setStops((p)=>p.map((pp,i)=> i===idx?{...pp, activities:[...pp.activities, filtered[0]]}:pp))
+                          if (list[0]) setStops((p)=>p.map((pp,i)=> i===idx?{...pp, activities:[...pp.activities, list[0]]}:pp))
                           setActivityInputs((ai)=>{ const b=[...ai]; b[idx]=""; return b })
                           setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=[]; return b })
                         }
@@ -307,29 +299,7 @@ export default function BuilderPage() {
                         </div>
                       ) : null}
                     </div>
-                    <div className="flex gap-2">
-                      <Input placeholder="Category" value={activityCategoryFilters[idx] || ""} onChange={async (e)=>{
-                        const v=e.target.value
-                        setActivityCategoryFilters((af)=>{ const b=[...af]; b[idx]=v; return b })
-                        // re-filter current suggestions
-                        if (activityInputs[idx] && activityInputs[idx].length>=2) {
-                          const list = await searchActivities(activityInputs[idx], s.city?.id)
-                          const max = activityMaxCostFilters[idx]
-                          const filtered = list.filter(a => (!v || a.category===v) && (!max || (a.estimated_cost ?? 0) <= max))
-                          setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=filtered.slice(0,8); return b })
-                        }
-                      }}/>
-                      <Input placeholder="Max Cost" type="number" value={(activityMaxCostFilters[idx] ?? "") as any} onChange={async (e)=>{
-                        const v = e.target.value ? Number(e.target.value) : undefined
-                        setActivityMaxCostFilters((mf)=>{ const b=[...mf]; b[idx]=v as any; return b })
-                        if (activityInputs[idx] && activityInputs[idx].length>=2) {
-                          const list = await searchActivities(activityInputs[idx], s.city?.id)
-                          const cat = activityCategoryFilters[idx]
-                          const filtered = list.filter(a => (!cat || a.category===cat) && (!v || (a.estimated_cost ?? 0) <= (v as number)))
-                          setActivitySuggestions((as)=>{ const b=[...as]; b[idx]=filtered.slice(0,8); return b })
-                        }
-                      }}/>
-                    </div>
+                    <div className="flex-1"></div>
                   </div>
                   {s.activities.length>0 && (
                     <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">

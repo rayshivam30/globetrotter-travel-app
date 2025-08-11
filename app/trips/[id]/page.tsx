@@ -156,7 +156,7 @@ export default function TripDetailPage() {
         </div>
 
         {/* Trip Details */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card>
             <CardContent className="p-6 text-center">
               <Calendar className="h-8 w-8 text-blue-600 mx-auto mb-3" />
@@ -172,16 +172,6 @@ export default function TripDetailPage() {
               <MapPin className="h-8 w-8 text-green-600 mx-auto mb-3" />
               <h3 className="font-semibold mb-2">Destinations</h3>
               <p className="text-2xl font-bold text-green-600">{trip.stop_count}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6 text-center">
-              <DollarSign className="h-8 w-8 text-orange-600 mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Total Budget</h3>
-              <p className="text-2xl font-bold text-orange-600">
-                ${(trip.total_budget || 0).toLocaleString()}
-              </p>
             </CardContent>
           </Card>
         </div>

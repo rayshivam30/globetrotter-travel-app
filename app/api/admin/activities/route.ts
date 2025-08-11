@@ -14,7 +14,7 @@ let schemaEnsured = false
 async function ensureActivitiesSchema() {
   if (schemaEnsured) return
   await pool.query(`
-    ALTER TABLE activities ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'USD';
+    ALTER TABLE activities ADD COLUMN IF NOT EXISTS currency VARCHAR(3) DEFAULT 'INR';
     ALTER TABLE activities ADD COLUMN IF NOT EXISTS tags TEXT;
     CREATE UNIQUE INDEX IF NOT EXISTS activities_city_name_unique ON activities (city_id, name);
   `)
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
                  RETURNING id`
     const res = await pool.query(sql, [
       Number(city_id), String(name), category || null, description || null,
-      price != null ? Number(price) : null, (currency || 'USD').toUpperCase(),
+      price != null ? Number(price) : null, (currency || 'INR').toUpperCase(),
       duration_hours != null ? Number(duration_hours) : null,
       tags || null, image_url || null,
     ])
@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest) {
       for (const r of items) {
         await client.query(sql, [
           Number(r.city_id), String(r.name), r.category || null, r.description || null,
-          r.price != null ? Number(r.price) : null, (r.currency || 'USD').toUpperCase(),
+          r.price != null ? Number(r.price) : null, (r.currency || 'INR').toUpperCase(),
           r.duration_hours != null ? Number(r.duration_hours) : null, r.tags || null, r.image_url || null,
         ])
       }
