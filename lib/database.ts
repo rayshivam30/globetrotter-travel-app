@@ -595,4 +595,41 @@ export const dbHelpers = {
       client.release()
     }
   },
+
+  // Custom activities
+  addCustomActivityInstance: async (data: { trip_stop_id: number; name: string; custom_cost?: number | null; notes?: string | null }) => {
+    const sql = `INSERT INTO activity_instances (trip_stop_id, name, custom_cost, notes) VALUES ($1,$2,$3,$4) RETURNING id`
+    const res = await pool.query(sql, [data.trip_stop_id, data.name, data.custom_cost ?? null, data.notes ?? null])
+    return { id: res.rows[0]?.id }
+  },
+
+  upsertCityCostIndex: async (row: {
+    city_id: number
+    avg_transport_cost?: number | null
+    avg_accommodation_per_night?: number | null
+    avg_meal_cost_budget?: number | null
+    avg_meal_cost_midrange?: number | null
+    avg_meal_cost_luxury?: number | null
+    currency?: string | null
+  }) => {
+    const sql = `INSERT INTO city_cost_index (city_id, avg_transport_cost, avg_accommodation_per_night, avg_meal_cost_budget, avg_meal_cost_midrange, avg_meal_cost_luxury, currency)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7)
+                 ON CONFLICT (city_id) DO UPDATE SET
+                   avg_transport_cost = EXCLUDED.avg_transport_cost,
+                   avg_accommodation_per_night = EXCLUDED.avg_accommodation_per_night,
+                   avg_meal_cost_budget = EXCLUDED.avg_meal_cost_budget,
+                   avg_meal_cost_midrange = EXCLUDED.avg_meal_cost_midrange,
+                   avg_meal_cost_luxury = EXCLUDED.avg_meal_cost_luxury,
+                   currency = EXCLUDED.currency`
+    await pool.query(sql, [
+      row.city_id,
+      row.avg_transport_cost ?? null,
+      row.avg_accommodation_per_night ?? null,
+      row.avg_meal_cost_budget ?? null,
+      row.avg_meal_cost_midrange ?? null,
+      row.avg_meal_cost_luxury ?? null,
+      (row.currency || 'USD').toUpperCase(),
+    ])
+    return { success: true }
+  },
 }

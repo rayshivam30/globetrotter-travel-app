@@ -95,6 +95,7 @@ export default function AdminDashboardPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="trips">Trips</TabsTrigger>
+            <TabsTrigger value="activities" onClick={()=>router.push('/admin/activities')}>Activities</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-4">
