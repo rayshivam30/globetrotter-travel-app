@@ -10,15 +10,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { Plane, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { LocationSelector } from "@/components/location/location-selector"
 
 export default function CreateTripPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
     startDate: "",
-    place: "",
     endDate: "",
   })
+  const [selectedLocation, setSelectedLocation] = useState<{
+    id: number
+    name: string
+    country: string
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -32,6 +37,16 @@ export default function CreateTripPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!selectedLocation) {
+      toast({
+        title: "Location required",
+        description: "Please select a destination for your trip",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -47,6 +62,9 @@ export default function CreateTripPage() {
           description: formData.description,
           start_date: formData.startDate,
           end_date: formData.endDate,
+          location_id: selectedLocation.id,
+          location_name: selectedLocation.name,
+          country: selectedLocation.country,
         }),
       })
 
@@ -139,13 +157,11 @@ export default function CreateTripPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="place">Select a Place</Label>
-                  <Input
-                    id="place"
-                    name="place"
-                    placeholder="e.g., Paris, Bali, Tokyo"
-                    value={formData.place}
-                    onChange={handleChange}
+                  <Label>Destination</Label>
+                  <LocationSelector
+                    value={selectedLocation}
+                    onChange={setSelectedLocation}
+                    placeholder="Search for a destination..."
                   />
                 </div>
                 <div className="space-y-2">
@@ -161,10 +177,14 @@ export default function CreateTripPage() {
                 </div>
               </div>
 
-              <div>
-                <div className="border-b text-sm font-medium text-gray-700 pb-2">Suggestion for Places to Visit/Activities to perform</div>
-                <SuggestionsGrid query={formData.place} onSelect={(v) => setFormData((p) => ({ ...p, place: v }))} />
-              </div>
+              {selectedLocation && (
+                <div className="p-4 bg-blue-50 rounded-md border border-blue-100">
+                  <h3 className="font-medium text-blue-800">Destination Selected</h3>
+                  <p className="text-blue-700">
+                    {selectedLocation.name}, {selectedLocation.country}
+                  </p>
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <Button type="submit" className="flex-1" disabled={isLoading}>
@@ -184,48 +204,4 @@ export default function CreateTripPage() {
   )
 }
 
-function SuggestionsGrid({
-  query,
-  onSelect,
-}: {
-  query: string
-  onSelect: (value: string) => void
-}) {
-  const items = allSuggestions
-    .filter((s) =>
-      query ? (s.keywords.join(" ") + " " + s.title + " " + (s.location || "")).toLowerCase().includes(query.toLowerCase()) : true
-    )
-    .slice(0, 6)
-
-  return (
-    <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
-      {items.map((s) => (
-        <Card key={s.title} className="hover:shadow-sm transition-shadow cursor-pointer" onClick={() => onSelect(s.title)}>
-          <CardContent className="p-4">
-            <div className="h-24 rounded-md bg-gray-200 mb-3" />
-            <div className="font-medium text-sm">{s.title}</div>
-            {s.location && <div className="text-xs text-gray-600">{s.location}</div>}
-          </CardContent>
-        </Card>
-      ))}
-      {items.length === 0 && (
-        <div className="col-span-2 md:col-span-3 text-sm text-gray-500">No suggestions. Try another place.</div>
-      )}
-    </div>
-  )
-}
-
-const allSuggestions: { title: string; location?: string; keywords: string[] }[] = [
-  { title: "Eiffel Tower", location: "Paris, France", keywords: ["paris", "europe", "france", "tower", "landmark"] },
-  { title: "Colosseum", location: "Rome, Italy", keywords: ["rome", "italy", "europe", "history"] },
-  { title: "Sagrada Família", location: "Barcelona, Spain", keywords: ["barcelona", "spain", "gaudi", "europe"] },
-  { title: "Mount Fuji", location: "Japan", keywords: ["tokyo", "japan", "asia", "fuji", "mountain"] },
-  { title: "Ubud Rice Terraces", location: "Bali, Indonesia", keywords: ["bali", "indonesia", "asia", "rice", "ubud"] },
-  { title: "Grand Canyon", location: "Arizona, USA", keywords: ["usa", "america", "canyon", "hike"] },
-  { title: "Christ the Redeemer", location: "Rio de Janeiro, Brazil", keywords: ["rio", "brazil", "christ", "redeemer"] },
-  { title: "Machu Picchu", location: "Peru", keywords: ["peru", "inca", "trek", "south america"] },
-  { title: "Table Mountain", location: "Cape Town, South Africa", keywords: ["africa", "cape town", "hike", "views"] },
-  { title: "Marrakesh Souks", location: "Morocco", keywords: ["africa", "morocco", "markets", "marrakesh"] },
-  { title: "Sydney Opera House", location: "Sydney, Australia", keywords: ["oceania", "australia", "sydney", "opera"] },
-  { title: "Waitomo Glowworm Caves", location: "New Zealand", keywords: ["oceania", "new zealand", "caves", "glowworm"] },
-]
+// Removed static suggestions grid in favor of dynamic location selector
