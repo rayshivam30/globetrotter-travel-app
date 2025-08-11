@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast"
 import { Plane, ArrowLeft, Search, MapPin } from "lucide-react"
 import Link from "next/link"
+
 import { useDebounce } from "@/hooks/use-debounce"
 
 export default function CreateTripPage() {
@@ -17,10 +18,11 @@ export default function CreateTripPage() {
     name: "",
     description: "",
     startDate: "",
-    place: "",
     endDate: "",
   })
+
   const [selectedPlaces, setSelectedPlaces] = useState<string[]>([])
+
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
@@ -41,6 +43,16 @@ export default function CreateTripPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!selectedLocation) {
+      toast({
+        title: "Location required",
+        description: "Please select a destination for your trip",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -56,6 +68,9 @@ export default function CreateTripPage() {
           description: formData.description,
           start_date: formData.startDate,
           end_date: formData.endDate,
+          location_id: selectedLocation.id,
+          location_name: selectedLocation.name,
+          country: selectedLocation.country,
         }),
       })
 
@@ -148,6 +163,7 @@ export default function CreateTripPage() {
                   />
                 </div>
                 <div className="space-y-2">
+
                   <Label htmlFor="place">Select a Place</Label>
                   <div className="relative">
                     <Input
@@ -160,6 +176,7 @@ export default function CreateTripPage() {
                     />
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   </div>
+
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="endDate">End Date</Label>
@@ -173,6 +190,7 @@ export default function CreateTripPage() {
                   />
                 </div>
               </div>
+
 
               <div>
                 <div className="border-b text-sm font-medium text-gray-700 pb-2">Suggestion for Places to Visit/Activities to perform</div>
@@ -203,6 +221,7 @@ export default function CreateTripPage() {
                   />
                 </div>
               </div>
+
 
               <div className="flex gap-4">
                 <Button type="submit" className="flex-1" disabled={isLoading}>
