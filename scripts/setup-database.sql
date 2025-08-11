@@ -1,4 +1,3 @@
--- Create database tables for GlobeTrotter (PostgreSQL)
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -11,9 +10,32 @@ CREATE TABLE IF NOT EXISTS users (
   city VARCHAR(100),
   country VARCHAR(100),
   profile_image VARCHAR(500),
+  is_admin BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Ensure is_admin column exists for existing databases
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name='users' AND column_name='is_admin'
+  ) THEN
+    ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+  END IF;
+END$$;
+
+-- Enable pgcrypto for password hashing if available
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Seed admin user with email and password if not exists
+INSERT INTO users (email, password_hash, first_name, last_name, is_admin)
+SELECT 'admin@gmail.com', crypt('admin@123', gen_salt('bf', 12)), 'Admin', 'User', TRUE
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE LOWER(email) = LOWER('admin@gmail.com'));
+
+-- Seed configured admin email as admin (idempotent)
+UPDATE users SET is_admin = TRUE WHERE LOWER(email) = LOWER('admin@gmail.com');
 
 -- Trips table
 CREATE TABLE IF NOT EXISTS trips (
@@ -30,6 +52,12 @@ CREATE TABLE IF NOT EXISTS trips (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+-- Ensure category budget breakdown columns on trips
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS transport_budget_total DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS hotel_budget_total DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS meals_budget_total DECIMAL(12,2) DEFAULT 0;
+ALTER TABLE trips ADD COLUMN IF NOT EXISTS activities_budget_total DECIMAL(12,2) DEFAULT 0;
 
 -- Cities table
 CREATE TABLE IF NOT EXISTS cities (
@@ -60,6 +88,9 @@ CREATE TABLE IF NOT EXISTS trip_stops (
   FOREIGN KEY (city_id) REFERENCES cities(id)
 );
 
+-- Ensure meals_budget exists on trip_stops
+ALTER TABLE trip_stops ADD COLUMN IF NOT EXISTS meals_budget DECIMAL(10,2) DEFAULT 0;
+
 -- Activities table
 CREATE TABLE IF NOT EXISTS activities (
   id SERIAL PRIMARY KEY,
@@ -73,6 +104,47 @@ CREATE TABLE IF NOT EXISTS activities (
   FOREIGN KEY (city_id) REFERENCES cities(id)
 );
 
+-- Cleanup duplicates in activities by (city_id, name), keeping lowest id
+DELETE FROM activities a
+USING activities b
+WHERE a.city_id = b.city_id
+  AND a.name = b.name
+  AND a.id > b.id;
+
+-- Enforce uniqueness so each activity name is unique per city
+CREATE UNIQUE INDEX IF NOT EXISTS activities_city_name_unique ON activities (city_id, name);
+
+-- Seed common activities for all cities (idempotent per city using ON CONFLICT)
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'City Walking Tour', 'Guided or self-guided tour through main sights', 'Sightseeing', 20.00, 3
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'Local Food Tasting', 'Sample regional dishes at popular spots', 'Food', 25.00, 2
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'Museum Visit', 'Explore a notable museum or gallery', 'Culture', 15.00, 2
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'Market Stroll', 'Walk through local markets and shops', 'Leisure', 0.00, 2
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'Sunset Viewpoint', 'Enjoy sunset from a scenic overlook', 'Leisure', 0.00, 1
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
+INSERT INTO activities (city_id, name, description, category, estimated_cost, duration_hours)
+SELECT c.id, 'Bike Rental', 'Rent a bike and explore the city paths', 'Outdoor', 12.00, 3
+FROM cities c
+ON CONFLICT (city_id, name) DO NOTHING;
+
 -- Trip activities table
 CREATE TABLE IF NOT EXISTS trip_activities (
   id SERIAL PRIMARY KEY,
@@ -85,6 +157,23 @@ CREATE TABLE IF NOT EXISTS trip_activities (
   FOREIGN KEY (trip_stop_id) REFERENCES trip_stops(id) ON DELETE CASCADE,
   FOREIGN KEY (activity_id) REFERENCES activities(id)
 );
+
+-- itinerary_sections
+
+CREATE TABLE IF NOT EXISTS itinerary_sections (
+  id SERIAL PRIMARY KEY,
+  trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  start_date DATE,
+  end_date DATE,
+  budget NUMERIC(12,2),
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_itinerary_sections_trip ON itinerary_sections(trip_id);
 
 -- Insert sample cities (only if they don't exist)
 INSERT INTO cities (name, country, cost_index, popularity_score, description) 
